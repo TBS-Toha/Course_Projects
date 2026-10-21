@@ -1,1 +1,244 @@
+class Queue:
+    def __init__(self):
+        self.items = []
 
+    def is_empty(self):
+        return len(self.items) == 0
+
+    def enqueue(self, item):
+        self.items.append(item)
+
+    def remove_request(self, index):
+        """Remove a specific request by index (for manual selection)."""
+        if 0 <= index < len(self.items):
+            return self.items.pop(index)
+        else:
+            print("Invalid request number.")
+            return None
+
+    def display(self):
+        if self.is_empty():
+            print("No pending requests.")
+        else:
+            print("\nPending Booking Requests:")
+            for i, req in enumerate(self.items, 1):
+                print(f"{i}. Name: {req['name']}, ID: {req['ID']}")
+
+
+# --------------------- Linked List (for booked tickets) ---------------------
+class Node:
+    def __init__(self, name, ID, seat_no, payment_status):
+        self.name = name
+        self.ID = ID
+        self.seat_no = seat_no
+        self.payment_status = payment_status
+        self.next = None
+
+
+class LinkedList:
+    def __init__(self):
+        self.head = None
+        self.count = 0  # to track total booked tickets
+
+    def add_ticket(self, name, ID, seat_no, payment_status):
+        new_node = Node(name, ID, seat_no, payment_status)
+        if self.head is None:
+            self.head = new_node
+        else:
+            temp = self.head
+            while temp.next:
+                temp = temp.next
+            temp.next = new_node
+        self.count += 1
+        print(f"Ticket issued for {name} (Seat {seat_no}) | Payment: {payment_status}")
+
+    def display_tickets(self):
+        if self.head is None:
+            print("No booked tickets yet.")
+            return
+        print("\nBooked Tickets:")
+        temp = self.head
+        while temp:
+            print(f"Name: {temp.name}, ID: {temp.ID}, Seat: {temp.seat_no}, Payment: {temp.payment_status}")
+            temp = temp.next
+        print(f"\nTotal Tickets Booked: {self.count}/40")
+
+    def search_ticket(self, key):
+        temp = self.head
+        found = False
+        while temp:
+            if temp.name.lower() == key.lower() or temp.ID.lower() == key.lower():
+                print(f"\nTicket Found → {temp.name} | ID: {temp.ID} | Seat: {temp.seat_no} | Payment: {temp.payment_status}")
+                found = True
+                break
+            temp = temp.next
+        if not found:
+            print("Ticket not found.")
+
+    def is_seat_booked(self, seat_no):
+        temp = self.head
+        while temp:
+            if temp.seat_no == seat_no:
+                return True
+            temp = temp.next
+        return False
+
+    def is_full(self):
+        return self.count >= 40  # all seats filled
+
+
+# --------------------- Seat Manager (10x4 Matrix) ---------------------
+class SeatManager:
+    def __init__(self, rows=10, cols=4):
+        self.rows = rows
+        self.cols = cols
+        self.total_seats = rows * cols
+
+    def display_seats(self, booked_list):
+        print("\nSeat Layout (X = booked, number = available):")
+        for r in range(1, self.rows + 1):
+            row_display = ""
+            for c in range(1, self.cols + 1):
+                seat_no = (r - 1) * self.cols + c
+                if booked_list.is_seat_booked(seat_no):
+                    row_display += " X  "
+                else:
+                    row_display += f"{seat_no:02d} "
+            print(row_display)
+
+    def is_valid_seat(self, seat_no):
+        return 1 <= seat_no <= self.total_seats
+
+
+# --------------------- Payment Verification ---------------------
+def verify_payment():
+    print("\nPayment Verification")
+    print("1. Bkash")
+    print("2. Nagad")
+    print("3. Rocket")
+    print("4. Hand Cash")
+    print("5. Cancel Payment")
+
+    method = input("Choose your payment method (1-5): ")
+
+    if method == '5':
+        print("Payment cancelled.")
+        return False, "Cancelled"
+
+    elif method == '4':
+        confirm = input("Are you sure you want to pay by hand cash? (yes/no): ").lower()
+        if confirm == 'yes':
+            print("Payment method: Hand Cash (to be collected at counter).")
+            return True, "Hand Cash"
+        else:
+            print("Payment cancelled.")
+            return False, "Cancelled"
+
+    else:
+        trx_id = input("Enter Transaction ID: ")
+        if len(trx_id.strip()) < 5:
+            print("Invalid Transaction ID. Payment failed.")
+            return False, "Failed"
+        print("Payment verified successfully.")
+        if method == '1':
+            return True, "Bkash"
+        elif method == '2':
+            return True, "Nagad"
+        elif method == '3':
+            return True, "Rocket"
+
+
+# --------------------- Main Ticket Booking System ---------------------
+def main():
+    booking_queue = Queue()
+    booked_list = LinkedList()
+    seat_manager = SeatManager(10, 4)
+
+    while True:
+        print("\n====== Ticket Booking System ======")
+        print("1. Add Booking Request")
+        print("2. View & Choose Pending Request to Process")
+        print("3. Display All Booked Tickets")
+        print("4. Search Ticket by Name or ID")
+        print("5. Show Seat Layout")
+        print("6. Exit")
+        print("======================================")
+
+        choice = input("Enter your choice: ")
+
+        if choice == '1':
+            if booked_list.is_full():
+                print("All 40 seats are booked. No more tickets available.")
+                continue
+
+            name = input("Enter passenger name: ")
+            ID = input("Enter passenger ID: ")
+            booking_queue.enqueue({"name": name, "ID": ID})
+            print("Booking request added successfully!")
+
+        elif choice == '2':
+            if booked_list.is_full():
+                print("All seats are already booked. Cannot process more requests.")
+                continue
+
+            if booking_queue.is_empty():
+                print("No booking requests available.")
+                continue
+
+            booking_queue.display()
+            try:
+                req_no = int(input("\nEnter the request number to process: ")) - 1
+                req = booking_queue.remove_request(req_no)
+                if not req:
+                    continue
+
+                print(f"\nProcessing Request → {req['name']} (ID: {req['ID']})")
+                seat_manager.display_seats(booked_list)
+
+                try:
+                    seat_no = int(input("\nEnter seat number to book: "))
+                    if not seat_manager.is_valid_seat(seat_no):
+                        print("Invalid seat number (must be 1–40).")
+                        booking_queue.enqueue(req)
+                        continue
+
+                    if booked_list.is_seat_booked(seat_no):
+                        print("Seat already booked.")
+                        booking_queue.enqueue(req)
+                        continue
+
+                    success, payment_status = verify_payment()
+                    if success:
+                        booked_list.add_ticket(req["name"], req["ID"], seat_no, payment_status)
+                    else:
+                        print("Ticket not issued due to payment issue.")
+                        booking_queue.enqueue(req)
+
+                except ValueError:
+                    print("Invalid input. Please enter a valid seat number.")
+                    booking_queue.enqueue(req)
+
+            except ValueError:
+                print("Invalid input. Please enter a request number.")
+
+        elif choice == '3':
+            booked_list.display_tickets()
+
+        elif choice == '4':
+            key = input("Enter passenger name or ID: ")
+            booked_list.search_ticket(key)
+
+        elif choice == '5':
+            seat_manager.display_seats(booked_list)
+
+        elif choice == '6':
+            print("Exiting system. Goodbye!")
+            break
+
+        else:
+            print("Invalid choice. Try again.")
+
+
+# --------------------- Run Program ---------------------
+if __name__ == "__main__":
+    main()
